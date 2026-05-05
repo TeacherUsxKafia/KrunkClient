@@ -1,55 +1,30 @@
-#include <windows.h>
-#include <wrl.h>
-#include <wil/com.h>
-#include <string>
-#include "WebView2.h"
+cmake_minimum_required(VERSION 3.16)
+project(OpenKrunker)
 
-using namespace Microsoft::WRL;
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+add_definitions(-DUNICODE -D_UNICODE)
 
-HWND hWnd;
-static ComPtr<ICoreWebView2> webviewWindow;
+include(FetchContent)
+FetchContent_Declare(
+    wv2
+    URL https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.1264.42
+)
+FetchContent_Declare(
+    wil
+    URL https://www.nuget.org/api/v2/package/Microsoft.Windows.ImplementationLibrary/1.0.220201.1
+)
+FetchContent_MakeAvailable(wv2 wil)
 
-// THE PICO++ SECRET: Low-Level Mouse Hook for instant firing
-LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
-    if (nCode == HC_ACTION && webviewWindow) {
-        if (wParam == WM_LBUTTONDOWN) {
-            webviewWindow->ExecuteScript(L"window.dispatchEvent(new MouseEvent('mousedown', {bubbles: true}));", nullptr);
-            return 1; 
-        }
-        if (wParam == WM_LBUTTONUP) {
-            webviewWindow->ExecuteScript(L"window.dispatchEvent(new MouseEvent('mouseup', {bubbles: true}));", nullptr);
-            return 1;
-        }
-    }
-    return CallNextHookEx(NULL, nCode, wParam, lParam);
-}
+add_executable(KrunkerClient WIN32 main.cpp)
 
-int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR, int nCmdShow) {
-    WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_HREDRAW | CS_VREDRAW, DefWindowProc, 0, 0, hInst, NULL, LoadCursor(NULL, IDC_ARROW), NULL, NULL, L"KrunkerClass", NULL };
-    RegisterClassEx(&wc);
+# Explicitly find the library file to ensure it exists
+file(GLOB_RECURSE WV2_LIB "${wv2_SOURCE_DIR}/**/x64/WebView2Loader.lib")
 
-    hWnd = CreateWindow(L"KrunkerClass", L"Open Krunker Native", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 1280, 720, NULL, NULL, hInst, NULL);
-    ShowWindow(hWnd, nCmdShow);
+target_include_directories(KrunkerClient PRIVATE 
+    ${wv2_SOURCE_DIR}/build/native/include
+    ${wil_SOURCE_DIR}/include
+)
 
-    CreateCoreWebView2EnvironmentWithOptions(nullptr, nullptr, nullptr,
-        Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
-            [](HRESULT res, ICoreWebView2Environment* env) -> HRESULT {
-                env->CreateCoreWebView2Controller(hWnd, Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
-                    [](HRESULT res, ICoreWebView2Controller* controller) -> HRESULT {
-                        if (controller) {
-                            controller->get_CoreWebView2(&webviewWindow);
-                            webviewWindow->Navigate(L"https://krunker.io");
-                            SetWindowsHookEx(WH_MOUSE_LL, MouseHookProc, GetModuleHandle(NULL), 0);
-                        }
-                        return S_OK;
-                    }).Get());
-                return S_OK;
-            }).Get());
-
-    MSG msg;
-    while (GetMessage(&msg, NULL, 0, 0)) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-    }
-    return 0;
-}
+# This is the strongest way to link a specific file in CMake
+target_link_libraries(KrunkerClient PRIVATE WindowsApp "${WV2_LIB}")
