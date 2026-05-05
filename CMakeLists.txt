@@ -4,7 +4,10 @@ project(OpenKrunker)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Automatically get WebView2 and WIL (Windows Implementation Library)
+# THIS FIXES THE ERROR: Tells the compiler to use Unicode
+add_definitions(-DUNICODE -D_UNICODE)
+
+# Automatically get WebView2 and WIL
 include(FetchContent)
 FetchContent_Declare(
     Microsoft_Web_WebView2
