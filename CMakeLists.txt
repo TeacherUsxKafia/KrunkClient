@@ -4,10 +4,10 @@ project(OpenKrunker)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# THIS FIXES THE ERROR: Tells the compiler to use Unicode
+# Fixes the Character Set Error
 add_definitions(-DUNICODE -D_UNICODE)
 
-# Automatically get WebView2 and WIL
+# Fetching necessary libraries
 include(FetchContent)
 FetchContent_Declare(
     Microsoft_Web_WebView2
@@ -21,7 +21,13 @@ FetchContent_MakeAvailable(Microsoft_Web_WebView2 Microsoft_Windows_Implementati
 
 add_executable(KrunkerClient WIN32 main.cpp)
 
-# Link Windows libraries
-target_link_libraries(KrunkerClient PRIVATE WindowsApp)
-target_include_directories(KrunkerClient PRIVATE ${microsoft_web_webview2_SOURCE_DIR}/build/native/include)
-target_include_directories(KrunkerClient PRIVATE ${microsoft_windows_implementationlibrary_SOURCE_DIR}/include)
+# Fixes the Linker Error by explicitly linking the .lib file
+target_link_libraries(KrunkerClient PRIVATE 
+    WindowsApp 
+    ${microsoft_web_webview2_SOURCE_DIR}/build/native/x64/WebView2Loader.lib
+)
+
+target_include_directories(KrunkerClient PRIVATE 
+    ${microsoft_web_webview2_SOURCE_DIR}/build/native/include
+    ${microsoft_windows_implementationlibrary_SOURCE_DIR}/include
+)
