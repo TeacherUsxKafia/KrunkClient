@@ -3,31 +3,27 @@ project(OpenKrunker)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-# Fixes the Character Set Error
 add_definitions(-DUNICODE -D_UNICODE)
 
-# Fetching necessary libraries
 include(FetchContent)
 FetchContent_Declare(
-    Microsoft_Web_WebView2
+    webview2
     URL https://www.nuget.org/api/v2/package/Microsoft.Web.WebView2/1.0.1264.42
 )
 FetchContent_Declare(
-    Microsoft_Windows_ImplementationLibrary
+    wil
     URL https://www.nuget.org/api/v2/package/Microsoft.Windows.ImplementationLibrary/1.0.220201.1
 )
-FetchContent_MakeAvailable(Microsoft_Web_WebView2 Microsoft_Windows_ImplementationLibrary)
+FetchContent_MakeAvailable(webview2 wil)
 
 add_executable(KrunkerClient WIN32 main.cpp)
 
-# Fixes the Linker Error by explicitly linking the .lib file
-target_link_libraries(KrunkerClient PRIVATE 
-    WindowsApp 
-    ${microsoft_web_webview2_SOURCE_DIR}/build/native/x64/WebView2Loader.lib
+# This helps the compiler find the .h files
+target_include_directories(KrunkerClient PRIVATE 
+    ${webview2_SOURCE_DIR}/build/native/include
+    ${wil_SOURCE_DIR}/include
 )
 
-target_include_directories(KrunkerClient PRIVATE 
-    ${microsoft_web_webview2_SOURCE_DIR}/build/native/include
-    ${microsoft_windows_implementationlibrary_SOURCE_DIR}/include
-)
+# This tells the compiler EXACTLY where to find the missing library file
+link_directories(${webview2_SOURCE_DIR}/build/native/x64)
+target_link_libraries(KrunkerClient PRIVATE WindowsApp WebView2Loader.lib)
