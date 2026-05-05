@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <wrl.h>
 #include <wil/com.h>
+#include <string>
 #include "WebView2.h"
 
 using namespace Microsoft::WRL;
@@ -8,12 +9,12 @@ using namespace Microsoft::WRL;
 HWND hWnd;
 static ComPtr<ICoreWebView2> webviewWindow;
 
-// THE PICO++ SECRET: Low-Level Mouse Hook
+// The Pico++ Mouse Hook Logic
 LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
     if (nCode == HC_ACTION && webviewWindow) {
         if (wParam == WM_LBUTTONDOWN) {
             webviewWindow->ExecuteScript(L"window.dispatchEvent(new MouseEvent('mousedown', {bubbles: true}));", nullptr);
-            return 1; // Swallows the click to prevent browser delay
+            return 1; 
         }
         if (wParam == WM_LBUTTONUP) {
             webviewWindow->ExecuteScript(L"window.dispatchEvent(new MouseEvent('mouseup', {bubbles: true}));", nullptr);
@@ -24,13 +25,15 @@ LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam) {
 }
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR, int nCmdShow) {
-    // Basic Window Setup
+    // Register Window Class
     WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_HREDRAW | CS_VREDRAW, DefWindowProc, 0, 0, hInst, NULL, LoadCursor(NULL, IDC_ARROW), NULL, NULL, L"KrunkerClass", NULL };
     RegisterClassEx(&wc);
+
+    // Create the Window
     hWnd = CreateWindow(L"KrunkerClass", L"Open Krunker Native", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 1280, 720, NULL, NULL, hInst, NULL);
     ShowWindow(hWnd, nCmdShow);
 
-    // Initialize WebView2
+    // Initialize WebView2 Runtime
     CreateCoreWebView2EnvironmentWithOptions(nullptr, nullptr, nullptr,
         Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
             [](HRESULT res, ICoreWebView2Environment* env) -> HRESULT {
@@ -38,8 +41,11 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR, int nCmdShow) {
                     [](HRESULT res, ICoreWebView2Controller* controller) -> HRESULT {
                         if (controller) {
                             controller->get_CoreWebView2(&webviewWindow);
+                            
+                            // Load the Game
                             webviewWindow->Navigate(L"https://krunker.io");
-                            // Install the hook after webview is ready
+                            
+                            // Start the Mouse Hook
                             SetWindowsHookEx(WH_MOUSE_LL, MouseHookProc, GetModuleHandle(NULL), 0);
                         }
                         return S_OK;
@@ -47,6 +53,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR, int nCmdShow) {
                 return S_OK;
             }).Get());
 
+    // Main Message Loop
     MSG msg;
     while (GetMessage(&msg, NULL, 0, 0)) {
         TranslateMessage(&msg);
